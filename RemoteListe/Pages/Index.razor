@@ -1,0 +1,144 @@
+﻿@page "/"
+@inject ActiveDirectoryService ActiveDirectoryService;
+@using System.IO
+@using System.Text
+@inject IJSRuntime JS
+
+
+<h1>Liste der Remote-Rechner</h1>
+
+<p class="explanation mt-3">
+    Alle 5 Minuten wird der Verbindungsstatus aller Remote-Rechner abgefragt. Die Seite aktualisiert sich selbständig.
+    Für manuelles Aktualisieren den Rechner anklicken.
+</p>
+<p class="explanation">
+    Für jeden Rechner kann eine RDP-Datei heruntergeladen werden. Diese lässt sich mit dem Programm "Remotedesktopverbindung" öffnen
+    und stellt dann automatisch eine Verbindung mit dem Remote-Rechner her.
+</p>
+<div class="text-bold">
+    Legende:
+</div>
+<div style="display: flex; flex-direction: column">
+    <div class="host" style="margin-left: 30px;">
+    <div class="pt-2">
+        Verfügbar
+    </div>
+    <span class="indicator small"></span>
+</div>
+<div class="host" style="margin-left: 30px;">
+    <div class="pt-2">
+        Von anderem Benutzer verwendet
+    </div>
+    <span class="indicator small in-use"></span>
+</div>
+<div class="host" style="margin-left: 30px;">
+    <div class="pt-2">
+        Rechner ausgeschaltet
+    </div>
+    <span class="indicator small not-connected"></span>
+</div>
+</div>
+
+        <div class="divider-outer">
+        <div class="divider">
+            Remote-Rechner
+        </div>
+
+</div>
+<div class="row  align-items-start">
+        @foreach (var host in Hosts)
+        {
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="host-card @(host.IsRefreshing ? "is-refreshing" : "")" @onclick="@(e => RefreshHost(host))">
+           <div style="margin-left: 30px;">
+                    <div class="align-self-start mt-0 mb-0 lh-1">
+                        @if (host.ActiveSessions?.Count > 0)
+                        {
+                            <span style="font-weight: 600;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-person-circle" viewBox="0 0 20 20">
+                                    <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z" />
+                                    <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z" />
+                                </svg>
+                                @string.Join("\n", (host.ActiveSessions?.Select(s => s.UserName)))
+                                </span>
+                        } else {
+                            <span>&nbsp;</span>
+                        }
+                    </div>
+                <div class="host lh-1">
+                    <div class="host-name">
+                        @host.HostName
+                        @if (host.IsRefreshing) {
+                        <div class="spinner-border spinner-border-sm mx-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        }
+                    </div>
+                    <span class="indicator @(host.IsConnected ? (host.ActiveSessions?.Count > 0 ? "in-use" : "") : "not-connected")">
+                    </span>
+                </div>
+            </div>
+                <div class="lh-1 py-0" style="flex: 1; flex-direction: column; display: flex; justify-content: flex-end;">
+                    <div style="flex-direction: column;justify-content: flex-end; text-align: right;">
+                        <button @onclick="@(e => DownloadRdpFile(host))"
+                            type="button" class="btn btn-outline-primary">
+                            RDP
+                        </button>
+                    </div>
+                    <div class="time-stamp text-end mt-2 mb-0">Stand: @host.RefreshTime?.ToString("HH:mm:ss")</div>
+            
+            </div>
+           </div>
+           </div>
+        }
+</div>
+@code {
+    private List<RdpHost> Hosts { get; set; } = new ();
+
+    protected override Task OnInitializedAsync()
+    {
+        Hosts = ActiveDirectoryService.Hosts.Values.ToList();
+        ActiveDirectoryService.OnChange += OnMyChangeHandler;
+        return base.OnInitializedAsync();
+    }
+    public void Dispose() {
+        ActiveDirectoryService.OnChange -= OnMyChangeHandler;
+    }
+
+    private async void OnMyChangeHandler()
+    {
+        await InvokeAsync(() =>
+        {
+            Hosts = ActiveDirectoryService.Hosts.Values.ToList();
+            StateHasChanged();
+        });
+    }
+
+    private async void RefreshHost(RdpHost host) {
+        host.IsRefreshing = true;
+        StateHasChanged();
+        await host.Query();
+        host.IsRefreshing = false;
+        StateHasChanged();
+    }
+
+    private Stream CreateRdpFileStream(RdpHost host)
+    {
+        var connectinoString = "auto connect:i:1\nfull address:s:" + host.HostName;
+        var bytes = Encoding.UTF8.GetBytes(connectinoString);
+        var fileStream = new MemoryStream(bytes);
+
+        return fileStream;
+    }
+
+    private async Task DownloadRdpFile(RdpHost host)
+    {
+        var fileStream = CreateRdpFileStream(host);
+        var fileName = $"{host.HostName}.rdp";
+
+        using var streamRef = new DotNetStreamReference(stream: fileStream);
+
+        await JS.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+    }
+}
+

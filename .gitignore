@@ -1,0 +1,10 @@
+bin/
+obj/
+/packages/
+.vs/
+/volumes
+aws/*
+/logs
+.DS_Store
+.env.local
+.env.*.local
