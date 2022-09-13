@@ -14,6 +14,7 @@ Diese Änderungshistorie bezieht sich ausschließlich auf die readme-Datei. Alle
 | ------- | ----- | ----- | --------- |
 | 1.0.0 | 17.8.2022 | FB | Ersterstellung |
 | 1.1.0 | 13.9.2022 | FB | Installationsanleitung Abschnitt für User hinzugefügt |
+| 1.2.0 | 13.9.2022 | FB | Code-Scanning hinzugefügt |
 
 Änderungen in dieser Datei sind ebenfalls der git-Historie zu entnehmen.
 
