@@ -48,7 +48,7 @@
 <div class="row  align-items-start">
         @foreach (var host in Hosts)
         {
-        <div class="col-12 col-md-6 col-lg-4">
+        <div class="col-12 col-md-6 col-lg-4 col-xl-3">
             <div class="host-card @(host.IsRefreshing ? "is-refreshing" : "")" @onclick="@(e => RefreshHost(host))">
            <div style="margin-left: 30px;">
                     <div class="align-self-start mt-0 mb-0 lh-1">

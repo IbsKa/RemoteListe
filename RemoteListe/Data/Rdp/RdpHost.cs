@@ -1,5 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Net.NetworkInformation;
+using Windows.Networking;
+using Serilog;
 
 namespace RemoteListe
 {
@@ -80,6 +82,7 @@ namespace RemoteListe
                 RefreshTime = DateTime.Now;
                 if (!IsConnected)
                 {
+                    Log.Warning("no ping to " + HostName + " - mark as not connected");
                     SessionData = new List<TerminalSessionData>();
                     ActiveSessions = new List<TerminalSessionInfo>();
                     return true;
@@ -95,13 +98,14 @@ namespace RemoteListe
         {
             var tsd = new List<TerminalSessionData>();
             var server = OpenServer(HostName);
-
+            Log.Information("listing sessions for " + HostName);
             try
             {
                 var ppSessionInfo = IntPtr.Zero;
                 
                 var count = 0;
                 var retval = WTSEnumerateSessions(server, 0, 1, ref ppSessionInfo, ref count);
+                Log.Information($"{retval} sessions on {HostName}");
                 var dataSize = Marshal.SizeOf(typeof(WtsSessionInfo));
 
                 long current = (long)ppSessionInfo;
@@ -112,12 +116,17 @@ namespace RemoteListe
                     {
                         WtsSessionInfo si = (WtsSessionInfo)Marshal.PtrToStructure((IntPtr)current, typeof(WtsSessionInfo));
                         current += dataSize;
-
-                        tsd.Add(new TerminalSessionData(si.SessionID, si.State, si.pWinStationName));
+                        var t = new TerminalSessionData(si.SessionID, si.State, si.pWinStationName);
+                        Log.Debug("got terminal session data for " + HostName + ": {@TerminalSession}", tsd);
+                        tsd.Add(t);
                     }
 
                     WTSFreeMemory(ppSessionInfo);
                 }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "failed to list sessions for " + HostName);
             }
             finally
             {
@@ -168,8 +177,6 @@ namespace RemoteListe
                 Console.WriteLine(ex.Message);
                 return new List<TerminalSessionInfo>();
             }
-
-
         }
 
         private static TerminalSessionInfo GetSessionInfo(string hostName, int SessionId)
@@ -255,6 +262,11 @@ namespace RemoteListe
                 WTSQuerySessionInformation(server, SessionId,
                     WtsInfo.WorkingDirectory, out buffer, out bytesReturned);
                 data.WorkingDirectory = Marshal.PtrToStringAnsi(buffer);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("failed to retrieve session info for " + hostName);
+                Console.WriteLine(ex.Message);
             }
             finally
             {

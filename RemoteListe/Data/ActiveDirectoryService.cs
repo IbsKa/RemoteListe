@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using Serilog;
+using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.DirectoryServices;
 using System.Security.Principal;
@@ -15,9 +16,6 @@ namespace RemoteListe
 
     public class ActiveDirectoryService : BackgroundService
     {
-        public ActiveDirectoryService(ILogger<ActiveDirectoryService> logger) => _logger = logger;
-
-        private readonly ILogger<ActiveDirectoryService> _logger;
         private bool _refreshEnabled = true;
         private bool _isRefreshing = false;
 
@@ -28,7 +26,7 @@ namespace RemoteListe
         public static List<string> QueryActiveDirectory()
         {
             var hostNames = new List<string>();
-
+            
             var entry = new DirectoryEntry("LDAP://172.16.10.8/OU=Remote,OU=Rechner,DC=ibs-ka,DC=local");
             var searcher = new DirectorySearcher(entry)
             {
@@ -73,11 +71,17 @@ namespace RemoteListe
                     if (_refreshEnabled && !_isRefreshing)
                     {
                         _isRefreshing = true;
+
+                        Log.Information("querying active directory");
+
                         var hostNames = QueryActiveDirectory();
+
+                        Log.Information("active directory hostnames: " + string.Join(',', hostNames));
 
                         var toRemove = _hosts.Keys.Where(h => !hostNames.Contains(h));
                         foreach (var r in toRemove)
                         {
+                            Log.Information("removing from hosts: " + r);
                             _hosts.Remove(r);
                         }
 
@@ -93,10 +97,11 @@ namespace RemoteListe
                             }
                             try
                             {
+                                Log.Information("querying " + hostName);
                                 await rdpHost.Query();
                             } catch
                             {
-                                _logger.LogWarning("could not refresh host " + hostName);
+                                Log.Warning("could not refresh host " + hostName);
                                 continue;
                             }
                             
@@ -104,17 +109,18 @@ namespace RemoteListe
                     }
                     else
                     {
-                        _logger.LogInformation(
+                        Log.Information(
                             "Skipped PeriodicHostedService");
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogInformation(
+                    Log.Information(
                         $"Failed to execute PeriodicHostedService with exception message {ex.Message}. Good luck next round!");
                 }
                 finally
                 {
+                    Log.Information("refresh completed");
                     _hosts = _hosts.OrderBy(h => {
                         var match = SortRegex.Match(h.Key);
                         return match.Success ? (match.Groups[1].Value + match.Groups[2].Value.PadLeft(10, '0')) : ("ZZZ" + h.Key);

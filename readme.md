@@ -13,6 +13,7 @@ Diese Änderungshistorie bezieht sich ausschließlich auf die readme-Datei. Alle
 | Version | Datum | Autor | Bemerkung |
 | ------- | ----- | ----- | --------- |
 | 1.0.0 | 17.8.2022 | FB | Ersterstellung |
+| 1.1.0 | 13.9.2022 | FB | Installationsanleitung Abschnitt für User hinzugefügt |
 
 Änderungen in dieser Datei sind ebenfalls der git-Historie zu entnehmen.
 
@@ -91,6 +92,21 @@ Für den Abschluss des Projektes sind 32 Stunden veranschlagt. Dies beinhaltet:
 ## Installation und Deployment
 
 - Website: Keine Installation notwendig
+- Auf dem ausführenden Server muss ein Nutzer hinterlegt sein, der die "Query Information" special access permission sowie Rechte zum Starten  hat. Dazu:
+
+1. Create a normal user via the Active Directory Users and Computers tool.
+2. Add the created user to following groups Performance Monitor Users and Distributed COM Users under Builtin.
+3. Open a command prompt window and execute the wmimgmt.msc command.
+4. Select the Properties of WMI Control (local).
+5. Select the Security tab.
+6. Select Root and press the Security button.
+7. Add the group Performance Monitor Users.
+8. Enable all Remote Enable, Execute Methods, Enable Account and all read rights.
+9. Close the add dialog and select the group Performance Monitor Users in the list.
+10. Select Advanced in the Security for Root dialog and then select the group and press Edit.
+11. Select This namespace and subnamespaces to grant read-only access to the whole WMI tree to this account
+
+Im IIS auf dem Server dann Anwendungspool > Remoteliste > Erweiterte Einstellungen > Anwendungsidentität auf User ibs-ka\remoteliste stellen.
 
 
 
@@ -110,9 +126,9 @@ Für den Abschluss des Projektes sind 32 Stunden veranschlagt. Dies beinhaltet:
 
 ### Update- und Freigabeprozess
 
-- [ ] Die hier beschriebenen Prozesse triggern einen automatisierten Release.
+- [x] Die hier beschriebenen Prozesse triggern einen automatisierten Release.
 
-TBA
+"Veröffentlichen"-Tool in Visual Studio - dort ist ein Profil hinterlegt, dass die aktuelle Version zu VM-S-KA-REMOTE pusht.
 
 Freigabe durch Projektverantwortlichen
 
